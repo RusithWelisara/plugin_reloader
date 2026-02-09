@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://d1x6y31aa4b5c"]
+
+[ext_resource type="Script" uid="uid://c872igmyinnae" path="res://addons/plugin_reloader/reloader_dock.gd" id="1_script"]
+
+[node name="PluginReloader" type="VBoxContainer" unique_id=472968562]
+custom_minimum_size = Vector2(300, 400)
+script = ExtResource("1_script")
+
+[node name="Refresh" type="Button" parent="." unique_id=1127878037]
+layout_mode = 2
+text = "Refresh Plugin List"
+
+[node name="PluginList" type="ItemList" parent="." unique_id=476150445]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Reload" type="Button" parent="." unique_id=1243953564]
+layout_mode = 2
+text = "Reload Selected"
+
+[node name="ReloadAll" type="Button" parent="." unique_id=2144036986]
+layout_mode = 2
+text = "Reload ALL Plugins"
