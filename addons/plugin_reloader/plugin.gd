@@ -4,7 +4,7 @@ extends EditorPlugin
 var dock
 
 func _enter_tree():
-	dock = preload("res://addons/plugin_reloader/reloader_dock.tscn").instantiate()
+	dock = preload("reloader_dock.tscn").instantiate()
 	add_control_to_dock(DOCK_SLOT_LEFT_UR, dock)
 	dock.set_editor_interface(get_editor_interface())
 
