@@ -4,6 +4,15 @@ extends VBoxContainer
 # Removed explicit type to avoid potential cyclic reference issues
 var plugin_interface
 @onready var list : ItemList = $PluginList
+var _is_busy := false
+
+func _set_busy(busy: bool):
+	_is_busy = busy
+	$Refresh.disabled = busy
+	$Reload.disabled = busy
+	$ReloadAll.disabled = busy
+	# Block input on the list to prevent selection changes
+	list.mouse_filter = Control.MOUSE_FILTER_IGNORE if busy else Control.MOUSE_FILTER_STOP
 
 func set_editor_interface(ei):
 	plugin_interface = ei
@@ -53,14 +62,32 @@ func _on_item_clicked(index: int, _at_position: Vector2, _mouse_button_index: in
 	print("Plugin '", plugin_name, "' is now ", "Enabled" if new_state else "Disabled")
 
 func _on_reload_selected():
+	if _is_busy:
+		return
+		
 	var sel = list.get_selected_items()
 	if sel.is_empty():
 		return
-	reload_plugin(list.get_item_text(sel[0]))
+	
+	_set_busy(true)
+	await reload_plugin(list.get_item_text(sel[0]))
+	_set_busy(false)
 
 func reload_all_plugins():
+	if _is_busy:
+		return
+
+	_set_busy(true)
+	# Execute sequentially to avoid coroutine errors and potential conflicts
 	for i in range(list.item_count):
-		reload_plugin(list.get_item_text(i))
+		var pname = list.get_item_text(i)
+		# Skip self to avoid reloading the reloader itself which could interupt the process
+		if pname == "plugin_reloader":
+			continue
+		
+		await reload_plugin(pname)
+			
+	_set_busy(false)
 
 func reload_plugin(plugin_name:String):
 	if plugin_name == "plugin_reloader":
