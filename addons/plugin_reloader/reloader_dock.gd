@@ -71,7 +71,7 @@ func reload_plugin(plugin_name:String):
 	plugin_interface.set_plugin_enabled(plugin_name, false)
 	
 	# Wait for plugin to be fully disabled and nodes freed
-	await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(1.0).timeout
 
 	# Force reload scripts from disk
 	var plugin_path = "res://addons/" + plugin_name
