@@ -428,11 +428,14 @@ func reload_all_plugins():
 	_set_busy(true)
 	# Execute sequentially to avoid coroutine errors and potential conflicts
 	for i in range(list.item_count):
+		# only reload plugins that are currently enabled (metadata holds bool)
+		var enabled = list.get_item_metadata(i)
+		if not enabled:
+			continue
 		var pname = list.get_item_text(i)
-		# Skip self to avoid reloading the reloader itself which could interupt the process
+		# Skip self to avoid reloading the reloader itself which could interrupt the process
 		if pname == "plugin_reloader":
 			continue
-		
 		await reload_plugin(pname)
 			
 	_set_busy(false)
