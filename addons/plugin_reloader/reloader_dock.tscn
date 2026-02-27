@@ -87,3 +87,30 @@ layout_mode = 2
 [node name="Warning" type="Label" parent="SettingsDialog/VBoxContainer" unique_id=2000000017]
 layout_mode = 2
 text = "Note: Make sure this shortcut does not conflict with Godot editor default shortcuts."
+
+[node name="FeedbackDialog" type="AcceptDialog" parent="." unique_id=2000000020]
+title = "Send Feedback"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="FeedbackDialog" unique_id=2000000021]
+
+[node name="InfoLabel" type="Label" parent="FeedbackDialog/VBoxContainer" unique_id=2000000022]
+layout_mode = 2
+text = "Rate this plugin and optionally share your thoughts. Submission will copy your feedback to the clipboard and then open the discussion page."
+
+[node name="RatingContainer" type="HBoxContainer" parent="FeedbackDialog/VBoxContainer" unique_id=2000000023]
+layout_mode = 2
+
+[node name="RatingLabel" type="Label" parent="FeedbackDialog/VBoxContainer/RatingContainer" unique_id=2000000024]
+layout_mode = 2
+text = "Rating:"
+
+[node name="Rating" type="OptionButton" parent="FeedbackDialog/VBoxContainer/RatingContainer" unique_id=2000000025]
+layout_mode = 2
+
+[node name="MessageLabel" type="Label" parent="FeedbackDialog/VBoxContainer" unique_id=2000000026]
+layout_mode = 2
+text = "Optional feedback:"
+
+[node name="Message" type="TextEdit" parent="FeedbackDialog/VBoxContainer" unique_id=2000000027]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2

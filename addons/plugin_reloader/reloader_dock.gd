@@ -9,6 +9,9 @@ var plugin_interface
 @onready var options_button: MenuButton = $TopBar/Options
 @onready var about_dialog: AcceptDialog = $AboutDialog
 @onready var settings_dialog: AcceptDialog = $SettingsDialog
+@onready var feedback_dialog: AcceptDialog = $FeedbackDialog
+@onready var feedback_rating: OptionButton = $FeedbackDialog/VBoxContainer/RatingContainer/Rating
+@onready var feedback_message: TextEdit = $FeedbackDialog/VBoxContainer/Message
 @onready var modifiers_ctrl: CheckBox = $SettingsDialog/VBoxContainer/Modifiers/Ctrl
 @onready var modifiers_alt: CheckBox = $SettingsDialog/VBoxContainer/Modifiers/Alt
 @onready var modifiers_shift: CheckBox = $SettingsDialog/VBoxContainer/Modifiers/Shift
@@ -17,6 +20,12 @@ var plugin_interface
 
 var _is_busy := false
 var _about_buttons_initialized := false
+var _about_main_text: String = ""
+var _about_view: StringName = &"main" # "main" | "updates"
+
+# store the original feedback dialog text so we can restore it after showing a
+# temporary "copied" message
+var _feedback_dialog_text_default: String = ""
 
 # Default shortcut: Ctrl+Alt+R
 var reload_all_shortcut := {
@@ -26,6 +35,9 @@ var reload_all_shortcut := {
 	"shift": false,
 	"meta": false,
 }
+
+const GITHUB_FEEDBACK_URL := "https://github.com/RusithWelisara/plugin_reloader/issues/new"
+const DISCUSSION_URL := "https://github.com/RusithWelisara/plugin_reloader/discussions/3"
 
 func _set_busy(busy: bool):
 	_is_busy = busy
@@ -46,19 +58,38 @@ func set_editor_interface(ei):
 	popup.clear()
 	popup.add_item("About", 0)
 	popup.add_item("Settings", 1)
-	if not popup.id_pressed.is_connected(_on_options_id_pressed):
-		popup.id_pressed.connect(_on_options_id_pressed)
+	popup.add_item("Send Feedback", 2)
+	var options_cb := Callable(self, "_on_options_id_pressed")
+	if not popup.is_connected("id_pressed", options_cb):
+		popup.connect("id_pressed", options_cb)
 
 	# About dialog: add "Check for updates" button once
 	if not _about_buttons_initialized:
-		if not about_dialog.custom_action.is_connected(_on_about_custom_action):
-			about_dialog.custom_action.connect(_on_about_custom_action)
+		_about_main_text = about_dialog.dialog_text
+		var about_cb := Callable(self, "_on_about_custom_action")
+		if not about_dialog.is_connected("custom_action", about_cb):
+			about_dialog.connect("custom_action", about_cb)
+		# Use OK button press instead of relying on "confirmed" signal.
+		# This makes the "Back to About" behavior reliable across dialog types.
+		var ok_btn = about_dialog.get_ok_button()
+		if ok_btn:
+			var ok_cb := Callable(self, "_on_about_ok_pressed")
+			if not ok_btn.is_connected("pressed", ok_cb):
+				ok_btn.connect("pressed", ok_cb)
+		var about_vis_cb := Callable(self, "_on_about_visibility_changed")
+		if not about_dialog.is_connected("visibility_changed", about_vis_cb):
+			about_dialog.connect("visibility_changed", about_vis_cb)
 		about_dialog.add_button("Check for updates", false, "check_updates")
 		_about_buttons_initialized = true
 	
 	# Settings dialog wiring
-	if not settings_dialog.confirmed.is_connected(_on_settings_dialog_confirmed):
-		settings_dialog.confirmed.connect(_on_settings_dialog_confirmed)
+	var settings_cb := Callable(self, "_on_settings_dialog_confirmed")
+	if not settings_dialog.is_connected("confirmed", settings_cb):
+		settings_dialog.connect("confirmed", settings_cb)
+
+	# Feedback dialog wiring
+	_init_feedback_dialog()
+
 	_populate_key_selector()
 	_load_shortcut_from_settings()
 	_apply_shortcut_to_ui()
@@ -70,10 +101,16 @@ func set_editor_interface(ei):
 func _on_options_id_pressed(id: int) -> void:
 	match id:
 		0:
+			_show_about_main()
 			about_dialog.popup_centered()
 		1:
 			_apply_shortcut_to_ui()
 			settings_dialog.popup_centered()
+		2:
+			# Reset any temporary text and clear message box before showing
+			feedback_dialog.dialog_text = _feedback_dialog_text_default
+			feedback_message.text = ""
+			feedback_dialog.popup_centered()
 
 func _on_settings_dialog_confirmed() -> void:
 	_update_shortcut_from_ui()
@@ -82,6 +119,88 @@ func _on_settings_dialog_confirmed() -> void:
 func _on_about_custom_action(action: StringName) -> void:
 	if action == "check_updates":
 		_check_for_updates()
+
+func _on_about_ok_pressed() -> void:
+	# If the user is viewing update results, OK acts like "Back" to the main About text.
+	# Pressing OK again on the main view will close the dialog normally.
+	if _about_view == &"updates":
+		_show_about_main()
+		# When hide-on-OK is disabled, the dialog stays open and this acts like "Back".
+		# If the engine still hid it for any reason, reopen it.
+		call_deferred("_reopen_about_dialog")
+
+func _reopen_about_dialog() -> void:
+	if not about_dialog.visible:
+		about_dialog.popup_centered()
+
+func _on_about_visibility_changed() -> void:
+	# Reset view when closed/hidden (e.g. user clicks OK or the window close button).
+	if not about_dialog.visible:
+		_show_about_main()
+
+func _set_about_hide_on_ok(should_hide: bool) -> void:
+	# Godot's AcceptDialog can be configured to not hide when OK is pressed.
+	# We use this so OK can act like a "Back" button on the update-comparison view.
+	if about_dialog and about_dialog.has_method("set_hide_on_ok"):
+		about_dialog.call("set_hide_on_ok", should_hide)
+
+func _show_about_main() -> void:
+	if _about_main_text.is_empty():
+		_about_main_text = about_dialog.dialog_text
+	about_dialog.dialog_text = _about_main_text
+	_about_view = &"main"
+	_set_about_hide_on_ok(true)
+
+func _init_feedback_dialog() -> void:
+	# Populate rating options (1–5 stars).
+	feedback_rating.clear()
+	for i in range(1, 6):
+		var stars := ""
+		for s in range(5):
+			stars += "★" if s < i else "☆"
+		var label := "%s (%d/5)" % [stars, i]
+		feedback_rating.add_item(label, i)
+	feedback_rating.selected = 4 # default 5/5 (index 4)
+
+	# Connect submit (OK) handler once.
+	var ok_btn = feedback_dialog.get_ok_button()
+	if ok_btn:
+		var fb_ok_cb := Callable(self, "_on_feedback_ok_pressed")
+		if not ok_btn.is_connected("pressed", fb_ok_cb):
+			ok_btn.connect("pressed", fb_ok_cb)
+
+	# remember the default dialog text so we can swap it back later
+	_feedback_dialog_text_default = feedback_dialog.dialog_text
+
+func _on_feedback_ok_pressed() -> void:
+	# Copy the feedback text to the clipboard, show a brief confirmation,
+	# then open the discussion thread after a short delay so the user has time
+	# to read the notification.
+	var rating_index := feedback_rating.get_selected_id()
+	if rating_index <= 0:
+		rating_index = 5
+	var rating_value := rating_index
+
+	var feedback_text := "Rating: %d/5\n\nFeedback:\n%s" % [
+		rating_value,
+		feedback_message.text.strip_edges()
+	]
+	# Godot 4 uses a property on OS rather than a static method
+	#OS.clipboard = feedback_text
+	DisplayServer.clipboard_set(feedback_text)
+
+	# notify the user in the same dialog
+	feedback_dialog.dialog_text = "Feedback copied to clipboard.\nOpening discussion page…"
+
+	# wait a moment so the user can read the message
+	await get_tree().create_timer(1.0).timeout
+
+	feedback_dialog.hide()
+	OS.shell_open(DISCUSSION_URL)
+
+	# reset fields for next time
+	feedback_message.text = ""
+	feedback_dialog.dialog_text = _feedback_dialog_text_default
 
 func _populate_key_selector() -> void:
 	key_selector.clear()
@@ -155,14 +274,43 @@ func _save_shortcut_to_settings() -> void:
 	ProjectSettings.save()
 
 func _get_local_version() -> String:
+	var cfg_path := _find_plugin_cfg_path()
+	if cfg_path == "":
+		return "0.0.0"
+
 	var cfg := ConfigFile.new()
-	var err := cfg.load("res://addons/plugin_reloader/plugin.cfg")
+	var err := cfg.load(cfg_path)
 	if err != OK:
 		return "0.0.0"
 	return str(cfg.get_value("plugin", "version", "0.0.0"))
 
+func _find_plugin_cfg_path() -> String:
+	# Locate the nearest plugin.cfg by walking up from this script's directory.
+	var script_res = get_script()
+	if script_res == null:
+		return ""
+
+	var script_path: String = str(script_res.resource_path)
+	if script_path.is_empty():
+		return ""
+
+	var dir: String = script_path.get_base_dir()
+	while not dir.is_empty() and dir != "res://":
+		var candidate: String = dir.path_join("plugin.cfg")
+		if FileAccess.file_exists(candidate):
+			return candidate
+		dir = dir.get_base_dir()
+
+	# Fallback (common layout)
+	var fallback := "res://addons/plugin_reloader/plugin.cfg"
+	if FileAccess.file_exists(fallback):
+		return fallback
+	return ""
+
 func _check_for_updates() -> void:
 	var local_version := _get_local_version()
+	_about_view = &"updates"
+	_set_about_hide_on_ok(false)
 	about_dialog.dialog_text = "Plugin Reloader\n\nCurrent version: %s\n\nChecking for updates..." % local_version
 
 	var http := HTTPRequest.new()

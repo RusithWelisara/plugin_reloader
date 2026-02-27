@@ -34,6 +34,13 @@ Developing tools or plugins in Godot often requires frequent testing. Traditiona
 ### Using Shortcuts
 - **`Ctrl + Alt + R`**:  Immediately reloads all enabled plugins.
 
+### Sending Feedback
+
+- Open the dock's **Options → Send Feedback** menu item.
+- Choose a rating and optionally write a comment, then press **OK**.
+- The feedback text will be copied to your clipboard and the plugin will
+	automatically open the GitHub discussion page; just paste and post there.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
