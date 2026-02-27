@@ -1,10 +1,21 @@
 [gd_scene format=3 uid="uid://d1x6y31aa4b5c"]
 
-[ext_resource type="Script" uid="uid://c872igmyinnae" path="res://addons/plugin_reloader/reloader_dock.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://c872igmyinnae" path="res://addons/plugin_reloader/addons/plugin_reloader/reloader_dock.gd" id="1_script"]
 
 [node name="PluginReloader" type="VBoxContainer" unique_id=472968562]
 custom_minimum_size = Vector2(300, 400)
 script = ExtResource("1_script")
+
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=2000000000]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="TopBar" unique_id=2000000001]
+layout_mode = 2
+text = "Plugin Reloader"
+
+[node name="Options" type="MenuButton" parent="TopBar" unique_id=2000000002]
+layout_mode = 2
+text = "⋮"
 
 [node name="Refresh" type="Button" parent="." unique_id=1127878037]
 layout_mode = 2
@@ -21,3 +32,58 @@ text = "Reload Selected"
 [node name="ReloadAll" type="Button" parent="." unique_id=2144036986]
 layout_mode = 2
 text = "Reload ALL Plugins"
+
+[node name="AboutDialog" type="AcceptDialog" parent="." unique_id=2000000003]
+oversampling_override = 1.0
+title = "About Plugin Reloader"
+size = Vector2i(641, 340)
+dialog_text = "Plugin Reloader
+
+A helper tool to quickly reload Godot editor plugins without restarting the editor.
+
+- Reload individual plugins
+- Reload all plugins
+- Customizable keyboard shortcut for \"Reload All\".
+
+Author: Rusith Welisara
+License: MIT
+Version: 1.1"
+
+[node name="SettingsDialog" type="AcceptDialog" parent="." unique_id=2000000004]
+title = "Plugin Reloader Settings"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SettingsDialog" unique_id=2000000005]
+
+[node name="ShortcutLabel" type="Label" parent="SettingsDialog/VBoxContainer" unique_id=2000000006]
+layout_mode = 2
+text = "Reload All shortcut:"
+
+[node name="Modifiers" type="HBoxContainer" parent="SettingsDialog/VBoxContainer" unique_id=2000000010]
+layout_mode = 2
+
+[node name="Ctrl" type="CheckBox" parent="SettingsDialog/VBoxContainer/Modifiers" unique_id=2000000011]
+layout_mode = 2
+text = "Ctrl"
+
+[node name="Alt" type="CheckBox" parent="SettingsDialog/VBoxContainer/Modifiers" unique_id=2000000012]
+layout_mode = 2
+text = "Alt"
+
+[node name="Shift" type="CheckBox" parent="SettingsDialog/VBoxContainer/Modifiers" unique_id=2000000013]
+layout_mode = 2
+text = "Shift"
+
+[node name="Meta" type="CheckBox" parent="SettingsDialog/VBoxContainer/Modifiers" unique_id=2000000014]
+layout_mode = 2
+text = "Meta"
+
+[node name="KeyLabel" type="Label" parent="SettingsDialog/VBoxContainer" unique_id=2000000015]
+layout_mode = 2
+text = "Key:"
+
+[node name="KeySelector" type="OptionButton" parent="SettingsDialog/VBoxContainer" unique_id=2000000016]
+layout_mode = 2
+
+[node name="Warning" type="Label" parent="SettingsDialog/VBoxContainer" unique_id=2000000017]
+layout_mode = 2
+text = "Note: Make sure this shortcut does not conflict with Godot editor default shortcuts."

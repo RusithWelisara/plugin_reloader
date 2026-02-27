@@ -13,9 +13,8 @@ func _exit_tree():
 	dock.queue_free()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		if event.pressed and event.keycode == KEY_R and event.ctrl_pressed and event.alt_pressed:
-			if dock:
-				print("Shortcut triggered: Reloading all plugins...")
-				dock.reload_all_plugins()
-				get_viewport().set_input_as_handled()
+	if event is InputEventKey and dock:
+		if dock.is_reload_all_shortcut(event):
+			print("Shortcut triggered: Reloading all plugins...")
+			dock.reload_all_plugins()
+			get_viewport().set_input_as_handled()
