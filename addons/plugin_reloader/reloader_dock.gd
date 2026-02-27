@@ -97,35 +97,11 @@ func reload_plugin(plugin_name:String):
 	print("Reloading plugin: ", plugin_name)
 	plugin_interface.set_plugin_enabled(plugin_name, false)
 	
-	# Wait for plugin to be fully disabled and nodes freed
-	await get_tree().create_timer(1.0).timeout
-
-	# Force reload scripts from disk
-	var plugin_path = "res://addons/" + plugin_name
-	_reload_scripts_recursive(plugin_path)
-	
-	# Allow some time for cleanup and file system scan
+	# Wait briefly for plugin to be fully disabled and autoloads/nodes to clean up,
+	# then rescan the filesystem and re‑enable the plugin. Rely on Godot's normal
+	# reload behavior instead of forcing GDScript.reload(), which can fail if
+	# instances still exist (e.g. autoload singletons like dialogue_manager).
+	await get_tree().create_timer(0.5).timeout
 	plugin_interface.get_resource_filesystem().scan()
 	await get_tree().create_timer(0.1).timeout
 	plugin_interface.set_plugin_enabled(plugin_name, true)
-
-func _reload_scripts_recursive(path: String):
-	var dir = DirAccess.open(path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if file_name == "." or file_name == "..":
-				file_name = dir.get_next()
-				continue
-			
-			var full_path = path + "/" + file_name
-			if dir.current_is_dir():
-				_reload_scripts_recursive(full_path)
-			elif file_name.ends_with(".gd"):
-				var res = ResourceLoader.load(full_path, "", ResourceLoader.CACHE_MODE_REPLACE)
-				if res is GDScript:
-					res.reload()
-			
-			file_name = dir.get_next()
-		dir.list_dir_end()
